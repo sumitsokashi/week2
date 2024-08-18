@@ -1,0 +1,219 @@
+USE [IndustryConnectWeek2]
+GO
+/****** Object:  UserDefinedFunction [dbo].[GetCustomerAmount]    Script Date: 03/06/2024 16:21:03 ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE function [dbo].[GetCustomerAmount] (@CustomerId int)
+returns money
+as
+begin
+--declare @amount money;
+
+return (select sum(price) from CustomerSales where [Customer Id] = @CustomerId);
+
+--return @amount
+end
+GO
+/****** Object:  Table [dbo].[Customer]    Script Date: 03/06/2024 16:21:03 ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[Customer](
+	[Id] [int] IDENTITY(1,1) NOT NULL,
+	[FirstName] [nvarchar](30) NULL,
+	[LastName] [nvarchar](40) NULL,
+	[DateOfBirth] [datetime] NULL,
+ CONSTRAINT [PK_Customer] PRIMARY KEY CLUSTERED 
+(
+	[Id] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+/****** Object:  Table [dbo].[Product]    Script Date: 03/06/2024 16:21:03 ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[Product](
+	[Id] [int] IDENTITY(1,1) NOT NULL,
+	[Name] [nvarchar](100) NULL,
+	[Description] [nvarchar](max) NULL,
+	[Active] [bit] NULL,
+	[Price] [money] NULL,
+ CONSTRAINT [PK_Product] PRIMARY KEY CLUSTERED 
+(
+	[Id] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
+GO
+/****** Object:  Table [dbo].[Sale]    Script Date: 03/06/2024 16:21:03 ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[Sale](
+	[Id] [int] IDENTITY(1,1) NOT NULL,
+	[CustomerId] [int] NULL,
+	[ProductId] [int] NULL,
+	[DateSold] [datetime] NULL,
+ CONSTRAINT [PK_Sale] PRIMARY KEY CLUSTERED 
+(
+	[Id] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+/****** Object:  View [dbo].[CustomerSales]    Script Date: 03/06/2024 16:21:03 ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE view [dbo].[CustomerSales]
+as
+select c.Id as 'Customer Id', c.FirstName, c.LastName, s.DateSold, p.[Name], p.Price
+, [dbo].[GetCustomerAmount](c.Id) as 'Total Purchases'
+	from Customer c
+		left join 
+			Sale s on 
+				c.Id = s.CustomerId
+					left join 
+						Product p on
+							s.ProductId = p.Id 
+GO
+SET IDENTITY_INSERT [dbo].[Customer] ON 
+GO
+INSERT [dbo].[Customer] ([Id], [FirstName], [LastName], [DateOfBirth]) VALUES (1, N'Andy', N'Mckelvey', CAST(N'2000-12-12T00:00:00.000' AS DateTime))
+GO
+INSERT [dbo].[Customer] ([Id], [FirstName], [LastName], [DateOfBirth]) VALUES (2, N'Callum', N'Jones', CAST(N'2000-12-12T00:00:00.000' AS DateTime))
+GO
+INSERT [dbo].[Customer] ([Id], [FirstName], [LastName], [DateOfBirth]) VALUES (3, N'Abigail', N'Smith', CAST(N'1978-12-01T00:00:00.000' AS DateTime))
+GO
+SET IDENTITY_INSERT [dbo].[Customer] OFF
+GO
+SET IDENTITY_INSERT [dbo].[Product] ON 
+GO
+INSERT [dbo].[Product] ([Id], [Name], [Description], [Active], [Price]) VALUES (1, N'Washing Machine', N'Washing Machine', 1, 200.0000)
+GO
+INSERT [dbo].[Product] ([Id], [Name], [Description], [Active], [Price]) VALUES (2, N'Television', N'Television', 1, 450.0000)
+GO
+INSERT [dbo].[Product] ([Id], [Name], [Description], [Active], [Price]) VALUES (3, N'Toaster', N'Toaster', 1, 45.5000)
+GO
+INSERT [dbo].[Product] ([Id], [Name], [Description], [Active], [Price]) VALUES (4, N'Kettle', NULL, 1, 15.0000)
+GO
+SET IDENTITY_INSERT [dbo].[Product] OFF
+GO
+SET IDENTITY_INSERT [dbo].[Sale] ON 
+GO
+INSERT [dbo].[Sale] ([Id], [CustomerId], [ProductId], [DateSold]) VALUES (1, 1, 2, CAST(N'2024-06-03T00:00:00.000' AS DateTime))
+GO
+INSERT [dbo].[Sale] ([Id], [CustomerId], [ProductId], [DateSold]) VALUES (2, 2, 1, CAST(N'2024-06-03T00:00:00.000' AS DateTime))
+GO
+INSERT [dbo].[Sale] ([Id], [CustomerId], [ProductId], [DateSold]) VALUES (3, 1, 3, CAST(N'2024-06-03T00:00:00.000' AS DateTime))
+GO
+SET IDENTITY_INSERT [dbo].[Sale] OFF
+GO
+ALTER TABLE [dbo].[Sale]  WITH CHECK ADD  CONSTRAINT [FK_Sale_Customer] FOREIGN KEY([CustomerId])
+REFERENCES [dbo].[Customer] ([Id])
+GO
+ALTER TABLE [dbo].[Sale] CHECK CONSTRAINT [FK_Sale_Customer]
+GO
+ALTER TABLE [dbo].[Sale]  WITH CHECK ADD  CONSTRAINT [FK_Sale_Product] FOREIGN KEY([ProductId])
+REFERENCES [dbo].[Product] ([Id])
+GO
+ALTER TABLE [dbo].[Sale] CHECK CONSTRAINT [FK_Sale_Product]
+GO
+/****** Object:  StoredProcedure [dbo].[InsertProduct]    Script Date: 03/06/2024 16:21:03 ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+create procedure [dbo].[InsertProduct] @Name nvarchar(100), @Price money
+as
+begin
+insert into [dbo].[Product]([Name], Price, Active)
+values
+(@Name,@Price,1)
+
+end
+GO
+
+/****Add a new column to the Customer Sale View called "Full Name". This should be made up of the Customer Firstname and Last Name columns****/
+
+/****** Object:  AlterView [dbo].[CustomerSales]    Script Date: 19-08-2024 23:18:37 ******/
+SET ANSI_NULLS ON
+GO
+
+SET QUOTED_IDENTIFIER ON
+GO
+
+ALTER view [dbo].[CustomerSales]
+as
+select c.Id as 'Customer Id', c.FirstName, c.LastName, s.DateSold, p.[Name], p.Price
+, [dbo].[GetCustomerAmount](c.Id) as 'Total Purchases',CONCAT(c.FirstName, ' ', c.LastName) as 'Full Name'
+	from Customer c
+		left join 
+			Sale s on 
+				c.Id = s.CustomerId
+					left join 
+						Product p on
+							s.ProductId = p.Id 
+
+GO
+
+/**** Write a function that calculates the persons age using their date of birth ****/
+/****** Object:  CREATE FUNCTION dbo.CalculateAge Script Date: 19-08-2024 23:18:37 ******/
+
+
+	CREATE FUNCTION dbo.CalculateAge (@DateOfBirth datetime)
+RETURNS int
+AS BEGIN
+
+RETURN
+     CONVERT(int,ROUND(DATEDIFF(hour,@DateOfBirth,GETDATE())/8766.0,0))
+    
+END
+
+select c.DateOfBirth, [dbo].CalculateAge(c.DateOfBirth) as Age from Customer as c
+
+
+/**** Create a new table called Store that will give the details of where the sale was made. This should contain "Name" and "Location" ****/
+/****** Object:  CREATE TABLE dbo.Store Script Date: 19-08-2024 23:18:37 ******/
+
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[Store](
+	[StoreId] [int] IDENTITY(1,1) NOT NULL,
+	[StoreName] [NVARCHAR](250) NULL,
+	[Location] [NVARCHAR](250) NULL
+ CONSTRAINT [PK_Store] PRIMARY KEY CLUSTERED 
+(
+	[StoreId] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+
+/**** Add the Store to the sale table ****/
+/****** Object:  ALTER TABLE dbo.Sale Script Date: 19-08-2024 23:18:37 ******/
+
+ALTER TABLE Sale
+ADD StoreId int
+FOREIGN KEY (StoreId) REFERENCES Store(StoreId);
+
+INSERT INTO Store(StoreName, Location)
+values 
+('Store 1', 'Mumbai'),
+('Store 2', 'New York')
+
+UPDATE Sale
+set StoreId = 1 
+where Id= 1
+
+
+
+
+
+
